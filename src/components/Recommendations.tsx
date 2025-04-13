@@ -10,16 +10,21 @@ import {
   Chip,
   alpha,
   Button,
+  Divider,
 } from '@mui/material';
 import { HealthReading } from '../types/health.types';
 import { healthMetrics } from '../data/healthMetrics';
 import { foodPreparations } from '../data/foodPreparations';
+import { generateMealPlan } from '../data/mealPlans';
+import { WeeklyMealPlan } from '../types/mealplan.types';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import SelfImprovementIcon from '@mui/icons-material/SelfImprovement';
 import LocalDiningIcon from '@mui/icons-material/LocalDining';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FoodPreparationModal from './FoodPreparationModal';
+import { MealPlanDisplay } from './MealPlanDisplay';
 
 interface RecommendationsProps {
   reading: HealthReading;
@@ -27,6 +32,7 @@ interface RecommendationsProps {
 
 export const Recommendations: React.FC<RecommendationsProps> = ({ reading }) => {
   const [selectedFood, setSelectedFood] = useState<string | null>(null);
+  const [mealPlan, setMealPlan] = useState<WeeklyMealPlan | null>(null);
   const metric = healthMetrics.find((m) => m.id === reading.metricId);
   
   if (!metric) {
@@ -63,6 +69,22 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ reading }) => 
     const preparations = foodPreparations[reading.metricId] || {};
     const preparation = preparations[food];
     return preparation || { preparation: '', recipeUrl: '' };
+  };
+
+  const handleGenerateMealPlan = () => {
+    const value = reading.value;
+    const { min, max } = metric.normalRange;
+    
+    // Determine target value based on current reading
+    let targetValue = value;
+    if (value < min) {
+      targetValue = min;
+    } else if (value > max) {
+      targetValue = max;
+    }
+    
+    const generatedMealPlan = generateMealPlan(reading.metricId, value, targetValue);
+    setMealPlan(generatedMealPlan);
   };
 
   return (
@@ -130,142 +152,151 @@ export const Recommendations: React.FC<RecommendationsProps> = ({ reading }) => 
           >
             {metric.description}
           </Typography>
-        </Box>
-
-        <Box sx={{ mb: 4 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              mb: 2,
-              color: 'primary.main',
-            }}
-          >
-            <RestaurantIcon />
-            Recommended Foods
-          </Typography>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                sm: 'repeat(2, 1fr)',
-              },
-              gap: 2,
-            }}
-          >
-            {metric.foodRecommendations.map((food, index) => (
-              <Button
-                key={index}
-                onClick={() => handleFoodClick(food)}
-                sx={{
-                  p: 0,
-                  textAlign: 'left',
-                  textTransform: 'none',
-                }}
-              >
-                <Paper
-                  sx={{
-                    width: '100%',
-                    p: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    backgroundColor: alpha('#60a5fa', 0.04),
-                    border: '1px solid',
-                    borderColor: alpha('#60a5fa', 0.1),
-                    transition: 'all 0.2s ease-in-out',
-                    '&:hover': {
-                      backgroundColor: alpha('#60a5fa', 0.08),
-                      transform: 'translateY(-2px)',
-                    },
-                  }}
-                >
-                  <LocalDiningIcon sx={{ color: 'primary.main', opacity: 0.7 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      color: 'text.primary',
-                      fontWeight: 500,
-                      flex: 1,
-                    }}
-                  >
-                    {food}
-                  </Typography>
-                  <ChevronRightIcon
-                    sx={{
-                      color: 'primary.main',
-                      opacity: 0.7,
-                      fontSize: 20,
-                    }}
-                  />
-                </Paper>
-              </Button>
-            ))}
+          
+          <Box sx={{ mt: 3 }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              startIcon={<MenuBookIcon />}
+              onClick={handleGenerateMealPlan}
+              sx={{
+                borderRadius: 2,
+                textTransform: 'none',
+                px: 3,
+              }}
+            >
+              Generate Personalized Meal Plan
+            </Button>
           </Box>
         </Box>
 
-        <Box>
-          <Typography
-            variant="h6"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              mb: 2,
-              color: 'secondary.main',
-            }}
-          >
-            <SelfImprovementIcon />
-            Lifestyle Recommendations
-          </Typography>
-          <List sx={{ p: 0 }}>
-            {metric.lifestyleRecommendations.map((recommendation, index) => (
-              <ListItem
-                key={index}
+        {mealPlan ? (
+          <MealPlanDisplay mealPlan={mealPlan} />
+        ) : (
+          <>
+            <Box sx={{ mb: 4 }}>
+              <Typography
+                variant="h6"
                 sx={{
-                  px: 2,
-                  py: 1.5,
-                  backgroundColor: index % 2 === 0 ? alpha('#34d399', 0.04) : 'transparent',
-                  borderRadius: 1,
-                  transition: 'all 0.2s ease-in-out',
-                  '&:hover': {
-                    backgroundColor: alpha('#34d399', 0.08),
-                  },
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 2,
+                  color: 'primary.main',
                 }}
               >
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                  <FitnessCenterIcon sx={{ color: 'secondary.main', opacity: 0.7 }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary={
-                    <Typography
-                      variant="body2"
+                <RestaurantIcon />
+                Recommended Foods
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                  },
+                  gap: 2,
+                }}
+              >
+                {metric.foodRecommendations.map((food, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => handleFoodClick(food)}
+                    sx={{
+                      p: 0,
+                      textAlign: 'left',
+                      textTransform: 'none',
+                    }}
+                  >
+                    <Paper
                       sx={{
+                        width: '100%',
+                        p: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        backgroundColor: alpha('#60a5fa', 0.04),
+                        border: '1px solid',
+                        borderColor: alpha('#60a5fa', 0.1),
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          backgroundColor: alpha('#60a5fa', 0.08),
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      <LocalDiningIcon sx={{ color: 'primary.main', opacity: 0.7 }} />
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'text.primary',
+                          fontWeight: 500,
+                          flex: 1,
+                        }}
+                      >
+                        {food}
+                      </Typography>
+                      <ChevronRightIcon
+                        sx={{
+                          color: 'primary.main',
+                          opacity: 0.7,
+                          fontSize: 20,
+                        }}
+                      />
+                    </Paper>
+                  </Button>
+                ))}
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography
+                variant="h6"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 2,
+                  color: 'secondary.main',
+                }}
+              >
+                <SelfImprovementIcon />
+                Lifestyle Recommendations
+              </Typography>
+              <List>
+                {metric.lifestyleRecommendations.map((recommendation, index) => (
+                  <ListItem
+                    key={index}
+                    sx={{
+                      p: 0,
+                      mb: 1,
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <FitnessCenterIcon sx={{ color: 'secondary.main', opacity: 0.7 }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={recommendation}
+                      primaryTypographyProps={{
+                        variant: 'body2',
                         color: 'text.primary',
                         fontWeight: 500,
                       }}
-                    >
-                      {recommendation}
-                    </Typography>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Box>
+          </>
+        )}
       </Paper>
 
-      {selectedFood && (
-        <FoodPreparationModal
-          open={true}
-          onClose={handleCloseModal}
-          foodName={selectedFood}
-          preparation={getFoodPreparation(selectedFood)}
-        />
-      )}
+      <FoodPreparationModal
+        open={!!selectedFood}
+        onClose={handleCloseModal}
+        foodName={selectedFood || ''}
+        preparation={selectedFood ? getFoodPreparation(selectedFood) : { preparation: '' }}
+      />
     </Box>
   );
 };
